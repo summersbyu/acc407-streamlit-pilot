@@ -52,6 +52,12 @@ with database() as uploaded_con, database() as other_visitor_con:
     assert not errors
     assert len(clean) == 3
     assert sum(row[3] for row in clean) == 1150051
+    mixed_dates = CLEAN_SAMPLE_CSV.replace('2027-03-06', '03/06/2027').replace('2027-03-07', '03/07/2027')
+    normalized, errors = validate_payment_csv(mixed_dates, vendor_ids)
+    assert not errors and normalized == clean
+    replace_payments(uploaded_con, normalized)
+    assert [row['payment_id'] for row in payments(uploaded_con)] == [201, 202, 203]
+    assert [row['payment_id'] for row in payments(uploaded_con, weekends_only=True)] == [202, 203]
     replace_payments(uploaded_con, clean)
     rows = payments(uploaded_con)
     assert (len(rows), sum(row['amount_cents'] for row in rows)) == (3, 1150051)
@@ -73,6 +79,8 @@ with database() as uploaded_con, database() as other_visitor_con:
         ('payment_id,vendor_id,payment_date,amount\n1,1,2027-03-01,NaN\n', 2),
         ('payment_id,vendor_id,payment_date,amount\n1,1,2027-03-01,Infinity\n', 2),
         ('payment_id,vendor_id,payment_date,amount\n1,1,20270301,1.00\n', 2),
+        ('payment_id,vendor_id,payment_date,amount\n1,1,02/30/2027,1.00\n', 2),
+        ('payment_id,vendor_id,payment_date,amount\n1,1,03/01/27,1.00\n', 2),
         ('payment_id,vendor_id,payment_date,amount\n1,1,2027-03-01,"1.00\n', 2),
         ('payment_id,vendor_id,payment_date,amount\n,,,\n', 2),
     ]

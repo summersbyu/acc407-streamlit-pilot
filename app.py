@@ -66,11 +66,17 @@ def validate_payment_csv(content, vendor_ids):
                 errors.append(f"CSV row {row_number}: unknown vendor_id {ids['vendor_id']}.")
             if row["payment_date"]:
                 try:
-                    if not re.fullmatch(r"[0-9]{4}-[0-9]{2}-[0-9]{2}", row["payment_date"]):
+                    value = row["payment_date"]
+                    if re.fullmatch(r"[0-9]{4}-[0-9]{2}-[0-9]{2}", value):
+                        parsed_date = date.fromisoformat(value)
+                    elif re.fullmatch(r"[0-9]{2}/[0-9]{2}/[0-9]{4}", value):
+                        month, day, year = map(int, value.split("/"))
+                        parsed_date = date(year, month, day)
+                    else:
                         raise ValueError
-                    date.fromisoformat(row["payment_date"])
+                    row["payment_date"] = parsed_date.isoformat()
                 except ValueError:
-                    errors.append(f"CSV row {row_number}: payment_date must be a valid date in YYYY-MM-DD format.")
+                    errors.append(f"CSV row {row_number}: payment_date must be a valid date in YYYY-MM-DD or MM/DD/YYYY format.")
             cents = 0
             if row["amount"]:
                 if not re.fullmatch(r"[0-9]{1,17}(\.[0-9]{1,2})?", row["amount"]):
@@ -196,7 +202,7 @@ def main():
         vendors = dict(con.execute("SELECT vendor_id, name FROM vendors ORDER BY name"))
         with st.expander("Upload payment CSV / download examples"):
             st.write("Required columns: payment_id, vendor_id, payment_date, amount. "
-                     "Use YYYY-MM-DD dates and positive dollar amounts with at most two decimal places. "
+                     "Use YYYY-MM-DD or MM/DD/YYYY dates and positive dollar amounts with at most two decimal places. "
                      "CSV row numbers include the header as row 1.")
             st.caption("Vendor IDs: " + " • ".join(f"{key}: {name}" for key, name in sorted(vendors.items())))
             clean_column, invalid_column = st.columns(2)
