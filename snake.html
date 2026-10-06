@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: system-ui, sans-serif; color: #143d70; }
+  main { max-width: 480px; margin: auto; padding: 12px; background: #eef5ff; border-radius: 16px; }
+  .bar { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+  canvas { display: block; width: 100%; background: #10243a; border-radius: 10px; outline-offset: 3px; }
+  button { padding: 10px 16px; border: 0; border-radius: 8px; background: #2563eb; color: white; font: inherit; cursor: pointer; touch-action: manipulation; }
+  button:disabled { opacity: .5; cursor: default; }
+  button:focus-visible { outline: 3px solid #f59e0b; outline-offset: 2px; }
+  #status { min-height: 24px; margin: 12px 0; }
+  .controls { display: flex; gap: 8px; margin-top: 12px; }
+  .pad { display: grid; grid-template-columns: repeat(3, 52px); gap: 5px; justify-content: center; margin: 12px 0; }
+  .pad button { padding: 8px; }
+  p { font-size: 14px; }
+</style>
+</head>
+<body>
+<main>
+  <div class="bar"><h2>Snake</h2><strong>Score: <span id="score">0</span></strong></div>
+  <canvas id="board" width="440" height="440" tabindex="0" aria-label="Snake game board. Use arrow keys or W A S D to steer."></canvas>
+  <div id="status" role="status" aria-live="polite">Press Start to play.</div>
+  <div class="controls"><button id="start">Start</button><button id="pause" disabled>Pause</button></div>
+  <div class="pad" aria-label="Direction controls">
+    <span></span><button data-dir="up" aria-label="Move up">↑</button><span></span>
+    <button data-dir="left" aria-label="Move left">←</button><button data-dir="down" aria-label="Move down">↓</button><button data-dir="right" aria-label="Move right">→</button>
+  </div>
+  <p>Arrow keys or WASD to steer · Space to pause.<br>Click Start or the board to focus keyboard controls. You can also use the direction buttons.</p>
+</main>
+<script>
+const board = document.getElementById('board');
+const ctx = board.getContext('2d');
+const scoreLabel = document.getElementById('score');
+const status = document.getElementById('status');
+const startButton = document.getElementById('start');
+const pauseButton = document.getElementById('pause');
+const size = 20, cell = board.width / size;
+const directions = {up: {x: 0, y: -1}, down: {x: 0, y: 1}, left: {x: -1, y: 0}, right: {x: 1, y: 0}};
+let snake, food, direction, nextDirection, score, running = false, paused = false, timer;
+function placeFood() {
+  const empty = [];
+  for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) {
+    if (!snake.some(part => part.x === x && part.y === y)) empty.push({x, y});
+  }
+  return empty.length ? empty[Math.floor(Math.random() * empty.length)] : null;
+}
+function draw() {
+  ctx.fillStyle = '#10243a'; ctx.fillRect(0, 0, board.width, board.height);
+  ctx.strokeStyle = '#1a334b';
+  for (let i = 1; i < size; i++) {
+    ctx.beginPath(); ctx.moveTo(i * cell, 0); ctx.lineTo(i * cell, board.height); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0, i * cell); ctx.lineTo(board.width, i * cell); ctx.stroke();
+  }
+  snake.forEach((part, i) => {
+    ctx.fillStyle = i === 0 ? '#a3e635' : '#22c55e';
+    ctx.fillRect(part.x * cell + 1, part.y * cell + 1, cell - 2, cell - 2);
+  });
+  if (food) {
+    ctx.fillStyle = '#fb7185'; ctx.beginPath();
+    ctx.arc((food.x + .5) * cell, (food.y + .5) * cell, cell * .35, 0, 2 * Math.PI); ctx.fill();
+  }
+}
+function reset() {
+  clearInterval(timer); running = false; paused = false;
+  snake = [{x: 8, y: 10}, {x: 7, y: 10}, {x: 6, y: 10}];
+  direction = {...directions.right}; nextDirection = direction;
+  score = 0; scoreLabel.textContent = score; food = placeFood(); draw();
+}
+function finish(message) {
+  clearInterval(timer); running = false; pauseButton.disabled = true;
+  status.textContent = message; startButton.textContent = 'Play again';
+}
+function tick() {
+  if (!running || paused) return;
+  direction = nextDirection;
+  const head = {x: snake[0].x + direction.x, y: snake[0].y + direction.y};
+  const eating = head.x === food.x && head.y === food.y;
+  const body = eating ? snake : snake.slice(0, -1);
+  if (head.x < 0 || head.y < 0 || head.x >= size || head.y >= size || body.some(part => part.x === head.x && part.y === head.y)) {
+    finish(`Game over! Your score is ${score}. Press Play again to restart.`); return;
+  }
+  snake.unshift(head);
+  if (eating) {
+    score++; scoreLabel.textContent = score; food = placeFood();
+    if (!food) { draw(); finish('You filled the board. You win!'); return; }
+  } else snake.pop();
+  draw();
+}
+function steer(name) {
+  const candidate = directions[name];
+  if (!running || paused || !candidate) return;
+  // Compare with the last completed move to prevent reversing between ticks.
+  if (candidate.x !== -direction.x || candidate.y !== -direction.y) nextDirection = candidate;
+}
+function togglePause() {
+  if (!running) return;
+  paused = !paused; pauseButton.textContent = paused ? 'Resume' : 'Pause';
+  status.textContent = paused ? 'Paused. Press Resume or Space to continue.' : 'Keep going!';
+}
+startButton.addEventListener('click', () => {
+  reset(); running = true; startButton.textContent = 'Restart';
+  pauseButton.disabled = false; pauseButton.textContent = 'Pause';
+  status.textContent = 'Keep going!'; board.focus(); timer = setInterval(tick, 140);
+});
+pauseButton.addEventListener('click', () => { togglePause(); board.focus(); });
+document.querySelectorAll('[data-dir]').forEach(button => button.addEventListener('click', () => { steer(button.dataset.dir); board.focus(); }));
+const keys = {ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right', w: 'up', s: 'down', a: 'left', d: 'right'};
+document.addEventListener('keydown', event => {
+  if (event.target !== board) return;
+  const name = keys[event.key] || keys[event.key.toLowerCase()];
+  if (name) { event.preventDefault(); steer(name); }
+  if (event.code === 'Space') { event.preventDefault(); if (!event.repeat) togglePause(); }
+});
+board.addEventListener('click', () => board.focus());
+window.addEventListener('blur', () => { if (running && !paused) togglePause(); });
+document.addEventListener('visibilitychange', () => { if (document.hidden && running && !paused) togglePause(); });
+reset();
+</script>
+</body>
+</html>

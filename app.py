@@ -199,6 +199,7 @@ def main():
         </style>
         """, unsafe_allow_html=True)
     st.title(APP_TITLE)
+    st.page_link("pages/1_Snake.py", label="Play Snake", icon="🐍")
     st.write("Explore fictional company payments and identify items for review.")
     st.caption("ACC 407 learning prototype • Fictional data • No transactions are posted")
     with database() as con:
