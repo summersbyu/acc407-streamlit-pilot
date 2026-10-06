@@ -30,6 +30,12 @@ assert not at.exception
 assert at.metric[0].value == '15'
 assert at.dataframe[1].value['Payment count'].sum() == 15
 assert round(at.dataframe[1].value['Total amount ($)'].sum() * 100) == 13730001
+at.switch_page('pages/1_Snake.py').run()
+assert not at.exception
+assert at.title[0].value == '🐍 Snake'
+at.switch_page('pages/0_Dashboard.py').run()
+assert not at.exception
+assert at.metric[0].value == '15'
 at.number_input[0].set_value(10000)
 at.checkbox[0].check()
 at.run()

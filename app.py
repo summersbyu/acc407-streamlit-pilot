@@ -261,4 +261,8 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    page = st.navigation([
+        st.Page("pages/0_Dashboard.py", title="Payment dashboard", icon="🏠", default=True),
+        st.Page("pages/1_Snake.py", title="Snake", icon="🐍"),
+    ])
+    page.run()
