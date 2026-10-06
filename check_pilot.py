@@ -1,5 +1,9 @@
 """Known-answer accounting and Streamlit interaction checks."""
-from app import database, payments, export, vendor_summary
+import io
+from unittest.mock import patch
+
+from app import (database, payments, export, vendor_summary, validate_payment_csv,
+                 replace_payments, CLEAN_SAMPLE_CSV, INVALID_SAMPLE_CSV)
 from streamlit.testing.v1 import AppTest
 
 with database() as con:
@@ -41,4 +45,61 @@ assert not at.exception
 assert at.metric[0].value == '0'
 assert len(at.info) == 1
 assert len(at.dataframe) == 0
-print('Six accounting cases, CSV row counts, vendor-summary reconciliation, and interactive boundary/empty-result checks passed.')
+
+with database() as uploaded_con, database() as other_visitor_con:
+    vendor_ids = {row['vendor_id'] for row in uploaded_con.execute('SELECT vendor_id FROM vendors')}
+    clean, errors = validate_payment_csv(CLEAN_SAMPLE_CSV.encode(), vendor_ids)
+    assert not errors
+    assert len(clean) == 3
+    assert sum(row[3] for row in clean) == 1150051
+    replace_payments(uploaded_con, clean)
+    rows = payments(uploaded_con)
+    assert (len(rows), sum(row['amount_cents'] for row in rows)) == (3, 1150051)
+    assert sum(row['amount_cents'] for row in vendor_summary(rows)) == 1150051
+    filtered = payments(uploaded_con, 2, 1000000, True)
+    assert len(filtered) == 1 and filtered[0]['amount_cents'] == 1000001
+    assert len(payments(other_visitor_con)) == 12
+    rejected, errors = validate_payment_csv(INVALID_SAMPLE_CSV, vendor_ids)
+    assert rejected == []
+    assert len(errors) == 7
+    for number in range(3, 10):
+        assert any(error.startswith(f'CSV row {number}:') for error in errors)
+    for explanation in ['duplicate', 'unknown', 'valid date', 'greater than zero',
+                        'two decimal places', 'missing']:
+        assert any(explanation in error for error in errors)
+    invalid_cases = [
+        ('payment_id,vendor_id,payment_date\n1,1,2027-03-01\n', 1),
+        ('payment_id,vendor_id,payment_date,amount\n', 2),
+        ('payment_id,vendor_id,payment_date,amount\n1,1,2027-03-01,NaN\n', 2),
+        ('payment_id,vendor_id,payment_date,amount\n1,1,2027-03-01,Infinity\n', 2),
+        ('payment_id,vendor_id,payment_date,amount\n1,1,20270301,1.00\n', 2),
+        ('payment_id,vendor_id,payment_date,amount\n1,1,2027-03-01,"1.00\n', 2),
+        ('payment_id,vendor_id,payment_date,amount\n,,,\n', 2),
+    ]
+    for content, row_number in invalid_cases:
+        rejected, errors = validate_payment_csv(content, vendor_ids)
+        assert rejected == [] and errors
+        assert all(error.startswith(f'CSV row {row_number}:') for error in errors)
+
+# Exercise the actual upload/report path with in-memory files; no disk uploads.
+with patch('streamlit.file_uploader', return_value=io.BytesIO(CLEAN_SAMPLE_CSV.encode())):
+    uploaded_app = AppTest.from_file('app.py').run()
+    assert not uploaded_app.exception
+    assert uploaded_app.metric[0].value == '3'
+    assert uploaded_app.metric[1].value == '$11,500.51'
+    uploaded_app.number_input[0].set_value(10000)
+    uploaded_app.checkbox[0].check()
+    uploaded_app.run()
+    assert not uploaded_app.exception
+    assert uploaded_app.metric[0].value == '1'
+    assert uploaded_app.metric[1].value == '$10,000.01'
+    assert uploaded_app.dataframe[1].value['Total amount ($)'].sum() == 10000.01
+
+with patch('streamlit.file_uploader', return_value=io.BytesIO(INVALID_SAMPLE_CSV.encode())):
+    rejected_app = AppTest.from_file('app.py').run()
+    assert not rejected_app.exception
+    assert len(rejected_app.error) == 8
+    assert rejected_app.metric[0].value == '12'
+    assert rejected_app.metric[1].value == '$131,300.01'
+
+print('Accounting, CSV export, vendor reconciliation, clean/invalid uploads, row errors, visitor isolation, and interactive filter checks passed.')
