@@ -6,7 +6,7 @@ from datetime import date
 
 import streamlit as st
 
-APP_TITLE = "Vendor Payment Explorer t"
+APP_TITLE = "Accounting Payment Review Dashboard"
 
 
 def database():
