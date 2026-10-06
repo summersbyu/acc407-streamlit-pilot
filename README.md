@@ -32,6 +32,12 @@ Create a new repository called `acc407-streamlit-pilot`. For this fictional-data
 
 ## Third: make one change and save it
 
+### Optional: use Codex in the Codespace
+
+The container configuration includes Node.js 22, which supplies `npm`. For a Codespace created before this was added, first save your files, run `git pull --ff-only`, then open the Command Palette (F1) and choose **Codespaces: Rebuild Container**. When it reconnects, open a new terminal and run `npm --version`.
+
+Install Codex with `npm install -g @openai/codex`, then sign in using `codex login --device-auth`. Device-code login and Codex access must be allowed for the ChatGPT account/workspace. Start with `codex` and ask it to explain `app.py` without changing it. Next, request one small change and ask it to run `python check_pilot.py`. Review and preview before committing/pushing. This account-authentication path remains to be verified in the instructor and student accounts.
+
 Change `APP_TITLE` near the top of `app.py` to a title of your choosing. Save the file and check the preview. Then use the editor's Source Control panel to stage the change, commit it with a short description, and sync/push to GitHub. Saving in Codespaces alone does not update the published app: the change must reach GitHub.
 
 Suggested AI request:
