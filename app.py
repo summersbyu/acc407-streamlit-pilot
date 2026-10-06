@@ -22,12 +22,15 @@ def database():
             amount_cents INTEGER NOT NULL CHECK(amount_cents > 0));
     """)
     con.executemany("INSERT INTO vendors VALUES (?, ?)", [
-        (1, "Aspen Office Supply"), (2, "Canyon Equipment"), (3, "Summit Services")])
+        (1, "Aspen Office Supply"), (2, "Canyon Equipment"), (3, "Summit Services"),
+        (4, "Bluebird Logistics"), (5, "Harbor Tech Solutions")])
     con.executemany("INSERT INTO payments VALUES (?, ?, ?, ?)", [
         (101, 1, "2027-03-01", 125000), (102, 2, "2027-03-05", 1000000),
         (103, 3, "2027-03-06", 1500000), (104, 1, "2027-03-07", 250000),
         (105, 2, "2027-03-08", 2500000), (106, 3, "2027-03-09", 1000001),
-        (107, 1, "2027-03-13", 1000000), (108, 2, "2027-03-14", 50000)])
+        (107, 1, "2027-03-13", 1000000), (108, 2, "2027-03-14", 50000),
+        (109, 4, "2027-03-15", 875000), (110, 4, "2027-03-18", 1800000),
+        (111, 5, "2027-03-19", 930000), (112, 5, "2027-03-20", 2100000)])
     return con
 
 
@@ -40,6 +43,18 @@ def payments(con, vendor_id=None, threshold_cents=0, weekends_only=False):
     """, (vendor_id, vendor_id, threshold_cents)).fetchall()
     return [dict(row) for row in rows if not weekends_only
             or date.fromisoformat(row["payment_date"]).weekday() >= 5]
+
+
+def vendor_summary(rows):
+    """Summarize only filtered payments, keeping totals in integer cents."""
+    grouped = {}
+    for row in rows:
+        vendor = row["vendor"]
+        summary = grouped.setdefault(vendor, {
+            "vendor": vendor, "payment_count": 0, "amount_cents": 0})
+        summary["payment_count"] += 1
+        summary["amount_cents"] += row["amount_cents"]
+    return [grouped[vendor] for vendor in sorted(grouped)]
 
 
 def export(rows):
@@ -80,6 +95,14 @@ def main():
         st.info("No payments match these filters. Try a lower threshold or another vendor.")
     st.download_button("Download this report as CSV", export(rows),
                        file_name="vendor-payment-report.csv", mime="text/csv")
+    st.subheader("Vendor summary")
+    summary = vendor_summary(rows)
+    if summary:
+        st.dataframe([{"Vendor": r["vendor"], "Payment count": r["payment_count"],
+                       "Total amount ($)": r["amount_cents"] / 100}
+                      for r in summary], hide_index=True)
+    else:
+        st.caption("No vendor payments to summarize for these filters.")
     st.subheader("What this report means")
     st.write("Weekend and high-value payments are review indicators, not proof of error or fraud. "
              "The threshold is exclusive: a payment equal to it is excluded. "
