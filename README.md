@@ -54,7 +54,7 @@ The cloud installs packages from `requirements.txt`. This pilot uses a version r
 
 | Selection | Expected count | Expected total |
 |---|---:|---:|
-| All vendors; threshold $0; weekend off | 8 | $76,750.01 |
+| All vendors; threshold $0; weekend off | 8 | $74,250.01 |
 | Canyon Equipment; threshold $0; weekend off | 3 | $35,500.00 |
 | All vendors; threshold $0; weekend on | 4 | $28,000.00 |
 | All vendors; threshold $10,000; weekend off | 3 | $50,000.01 |
@@ -82,4 +82,4 @@ Commit and push your changes, then explicitly stop the Codespace at https://gith
 - Codespaces stop/start: https://docs.github.com/en/codespaces/developing-in-a-codespace/stopping-and-starting-a-codespace
 - Codespaces billing: https://docs.github.com/en/billing/concepts/product-billing/github-codespaces
 
-Status: local starter prepared; public repository, Codespaces startup, and Community Cloud deployment must still be verified in the instructor's accounts.
+Status: public repository created at https://github.com/summersbyu/acc407-streamlit-pilot. Local checks passed using Python 3.14.2 and Streamlit 1.65.0: six accounting cases, CSV row counts, interactive threshold/weekend filtering, and empty results. Run `python check_pilot.py` to repeat. Codespaces startup with Python 3.12 and Community Cloud deployment remain unverified.
