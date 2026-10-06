@@ -8,7 +8,7 @@ from streamlit.testing.v1 import AppTest
 
 with database() as con:
     cases = [
-        (None, 0, False, 12, 13130001),
+        (None, 0, False, 15, 13730001),
         (2, 0, False, 3, 3550000),
         (None, 0, True, 5, 4900000),
         (None, 1000000, False, 5, 8900001),
@@ -27,9 +27,9 @@ with database() as con:
 
 at = AppTest.from_file('app.py').run()
 assert not at.exception
-assert at.metric[0].value == '12'
-assert at.dataframe[1].value['Payment count'].sum() == 12
-assert round(at.dataframe[1].value['Total amount ($)'].sum() * 100) == 13130001
+assert at.metric[0].value == '15'
+assert at.dataframe[1].value['Payment count'].sum() == 15
+assert round(at.dataframe[1].value['Total amount ($)'].sum() * 100) == 13730001
 at.number_input[0].set_value(10000)
 at.checkbox[0].check()
 at.run()
@@ -64,7 +64,7 @@ with database() as uploaded_con, database() as other_visitor_con:
     assert sum(row['amount_cents'] for row in vendor_summary(rows)) == 1150051
     filtered = payments(uploaded_con, 2, 1000000, True)
     assert len(filtered) == 1 and filtered[0]['amount_cents'] == 1000001
-    assert len(payments(other_visitor_con)) == 12
+    assert len(payments(other_visitor_con)) == 15
     rejected, errors = validate_payment_csv(INVALID_SAMPLE_CSV, vendor_ids)
     assert rejected == []
     assert len(errors) == 7
@@ -107,7 +107,7 @@ with patch('streamlit.file_uploader', return_value=io.BytesIO(INVALID_SAMPLE_CSV
     rejected_app = AppTest.from_file('app.py').run()
     assert not rejected_app.exception
     assert len(rejected_app.error) == 8
-    assert rejected_app.metric[0].value == '12'
-    assert rejected_app.metric[1].value == '$131,300.01'
+    assert rejected_app.metric[0].value == '15'
+    assert rejected_app.metric[1].value == '$137,300.01'
 
 print('Accounting, CSV export, vendor reconciliation, clean/invalid uploads, row errors, visitor isolation, and interactive filter checks passed.')
